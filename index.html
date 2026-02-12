@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buckshot Roulette 專業算計桌</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #12281d; 
+            background-image: 
+                radial-gradient(circle at 50% 50%, transparent 50%, rgba(0,0,0,0.5) 100%),
+                url("https://www.transparenttextures.com/patterns/dark-matter.png");
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 300;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            padding: 20px;
+        }
+        * {
+            font-weight: 300 !important;
+        }
+        
+        @keyframes shake {
+            0% { transform: translate(0.5px, 0.5px) rotate(0deg); }
+            20% { transform: translate(-0.5px, 0px) rotate(0.1deg); }
+            40% { transform: translate(0.5px, -0.5px) rotate(0deg); }
+            60% { transform: translate(-0.5px, 0.5px) rotate(-0.1deg); }
+            80% { transform: translate(0.5px, 0.5px) rotate(0deg); }
+            100% { transform: translate(0px, -0.5px) rotate(0.1deg); }
+        }
+
+        @keyframes btn-tap-shake-forever {
+            0% { transform: scale(0.95) translate(1.5px, 1.5px); }
+            25% { transform: scale(0.95) translate(-1.5px, -1.5px); }
+            50% { transform: scale(0.95) translate(1.5px, -1.5px); }
+            75% { transform: scale(0.95) translate(-1.5px, 1.5px); }
+            100% { transform: scale(0.95) translate(0, 0); }
+        }
+
+        @keyframes impact-shake {
+            0% { transform: translate(4px, 4px); }
+            20% { transform: translate(-4px, -2px); }
+            40% { transform: translate(3px, -4px); }
+            60% { transform: translate(-3px, 3px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0, 0); }
+        }
+
+        @keyframes flash-white {
+            0% { background-color: rgba(255,255,255,1); }
+            100% { background-color: rgba(255,255,255,0); }
+        }
+
+        .shake-rand-1 { animation: shake 0.53s infinite; }
+        .shake-rand-2 { animation: shake 0.67s infinite; }
+        .shake-rand-3 { animation: shake 0.41s infinite; }
+        .shake-rand-4 { animation: shake 0.79s infinite; }
+
+        .btn-active-shake-forever { animation: btn-tap-shake-forever 0.12s infinite linear !important; }
+        .impact-active { animation: impact-shake 0.2s cubic-bezier(.36,.07,.19,.97) both !important; }
+
+        .flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+            background-color: transparent;
+        }
+
+        .flash-active { animation: flash-white 0.4s ease-out forwards; }
+
+        .poker-table {
+            border: 1.5px solid #ffffff;
+            border-radius: 12px;
+            background-color: #12281d;
+            background-image: radial-gradient(circle at center, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
+            position: relative;
+            padding: 40px 20px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+            transition: transform 0.1s ease;
+        }
+
+        #slotContainer {
+            display: flex;
+            flex-wrap: wrap; 
+            justify-content: center;
+            align-content: flex-start;
+            gap: 4px; 
+            width: 100%; 
+            max-width: 320px; 
+            margin: 0 auto 24px auto; 
+            padding: 10px 0;
+            overflow: visible;
+        }
+        .shell-slot {
+            flex: 0 0 calc((100% - (4px * 7)) / 8); 
+            height: 95px;   
+            border: 1px dashed rgba(255,255,255,0.4);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .slot-number {
+            font-size: 16px; 
+            color: rgba(255,255,255,0.4);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        /* 核心彈殼樣式：調整銅帽寬度與加上勾爪凸起 */
+        .shell-live, .shell-blank {
+            width: 60%; 
+            height: 60px; 
+            border-radius: 2px 2px 0 0;
+            position: relative;
+            border: 1px solid rgba(0,0,0,0.5);
+            box-shadow: inset 2px 0 5px rgba(255,255,255,0.1), inset -2px 0 5px rgba(0,0,0,0.3);
+            z-index: 2;
+            margin-bottom: 8px; 
+        }
+
+        /* 彈殼底部的黃銅部分（銅帽） */
+        .shell-live::after, .shell-blank::after {
+            content: "";
+            position: absolute;
+            bottom: -5px;
+            left: -8%; /* 寬度稍微寬出彈體一點點 */
+            width: 116%; 
+            height: 18px;
+            background: linear-gradient(to right, #8a6d3b 0%, #d4af37 50%, #8a6d3b 100%); 
+            border: 1px solid #4a3c21;
+            border-radius: 0 0 1px 1px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+
+        /* 彈殼勾爪凸起：倒 T 型 / 小耳朵樣式 */
+        .shell-live::before, .shell-blank::before {
+            content: "";
+            position: absolute;
+            bottom: -8px; /* 位於最末端 */
+            left: -15%; /* 比銅帽更寬的凸起 */
+            width: 130%;
+            height: 4px; /* 極薄的凸起邊緣 */
+            background: #d4af37;
+            border: 1px solid #4a3c21;
+            border-radius: 1px;
+            z-index: 3;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .shell-live { background: #992222; } 
+        .shell-blank { background: #223388; } 
+
+        .shell-noted {
+            opacity: 0.5;
+            z-index: 1;
+        }
+
+        .active-slot {
+            border: 1.5px solid #ffffff !important;
+            box-shadow: 0 0 8px #ffffff;
+            animation: shake 0.3s infinite !important; 
+        }
+
+        .btn-count {
+            border: 1.5px solid #ffffff;
+            background: transparent;
+            border-radius: 2px;
+            width: 30px; 
+            height: 55px; 
+            transition: background 0.2s, color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .live-btn-selected {
+            background: #992222 !important;
+            color: #ffffff !important;
+            border-color: #992222 !important;
+        }
+        .blank-btn-selected {
+            background: #223388 !important;
+            color: #ffffff !important;
+            border-color: #223388 !important;
+        }
+
+        button:disabled { opacity: 0.1; cursor: not-allowed; }
+
+        .prob-bar-container {
+            width: 100%;
+            height: 6px;
+            background: #223388;
+            margin: 15px auto;
+            border: 1px solid rgba(255,255,255,1); /* 修改為白色細線 */
+            overflow: hidden;
+        }
+        .prob-bar-live {
+            height: 100%;
+            background: #992222;
+            transition: width 0.5s ease-in-out;
+        }
+
+        .primer-point {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d4af37, #8a6d3b);
+            border: 1.5px solid #4a3c21;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+            margin-bottom: 2px;
+            position: relative;
+        }
+
+        .primer-point::after {
+            content: "";
+            width: 15px;
+            height: 15px;
+            background: radial-gradient(circle, #e0e0e0 0%, #999999 100%);
+            border: 1.5px solid #4a3c21; 
+            border-radius: 50%;
+            box-shadow: inset 0 0 3px rgba(0,0,0,0.8), 1px 1px 2px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .primer-label-svg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            filter: drop-shadow(0px 1px 1px rgba(0,0,0,0.8));
+        }
+
+        .shoot-btn-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+            filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.7)); 
+        }
+
+        #undoBtn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 35px;
+            height: 35px;
+            opacity: 0.4;
+            transition: all 0.2s;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1.5px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+        #undoBtn:hover:not(:disabled) {
+            opacity: 1;
+            border-color: #ffffff;
+            background: rgba(255,255,255,0.1);
+        }
+        #undoBtn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        #noteModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #12281d;
+            border: 2px solid #ffffff;
+            padding: 24px;
+            z-index: 10000;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(0,0,0,1);
+            display: none;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 9999;
+            display: none;
+        }
+
+        .note-btn-shell-container {
+            width: 40px;
+            height: 80px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+    </style>
+</head>
+<body id="mainBody">
+
+    <div id="flashOverlay" class="flash-overlay"></div>
+    <div id="modalOverlay" class="modal-overlay" onclick="closeNoteModal()"></div>
+    
+    <!-- 註記彈窗 -->
+    <div id="noteModal">
+        <p class="text-xs mb-6 text-center tracking-[0.3em] opacity-60">MARKING</p>
+        <div class="flex gap-4">
+            <button onclick="applyNote('live')" class="flex-1 px-4 py-3 bg-transparent border border-white/20 hover:border-white/60 transition-colors flex flex-col items-center">
+                <div class="note-btn-shell-container">
+                    <div class="shell-live"></div>
+                </div>
+            </button>
+            <button onclick="applyNote('blank')" class="flex-1 px-4 py-3 bg-transparent border border-white/20 hover:border-white/60 transition-colors flex flex-col items-center">
+                <div class="note-btn-shell-container">
+                    <div class="shell-blank"></div>
+                </div>
+            </button>
+        </div>
+        <button onclick="applyNote(null)" class="w-full mt-4 py-2 border border-white/10 text-[8px] opacity-40 hover:opacity-100 transition-opacity tracking-widest">CLEAR MARK</button>
+    </div>
+
+    <!-- 上膛準備畫面 -->
+    <div id="setupScreen" class="w-full max-w-2xl text-center">
+        <h1 class="text-3xl mb-12 tracking-[0.5em] border-b-2 border-white pb-4 inline-block shake-rand-2">AFREAD?</h1>
+        
+        <div class="flex flex-col gap-10 items-center">
+            <div class="w-full">
+                <p class="text-lg mb-4">實彈數量 (LIVE)</p>
+                <div class="flex justify-center gap-3" id="liveBtnContainer"></div>
+            </div>
+
+            <div class="w-full">
+                <p class="text-lg mb-4">空包彈數量 (BLANK)</p>
+                <div class="flex justify-center gap-3" id="blankBtnContainer"></div>
+            </div>
+        </div>
+
+        <div class="mt-16">
+            <button onclick="triggerEffect(true); setTimeout(startGame, 100)" class="px-10 py-3 border-2 border-white text-xl hover:bg-white hover:text-[#12281d] transition-all shake-rand-4">
+                LET'S DO THIS
+            </button>
+        </div>
+    </div>
+
+    <!-- 賭局畫面 -->
+    <div id="gameScreen" class="hidden poker-table">
+        <button id="undoBtn" onclick="undo()" title="Undo">
+            <svg viewBox="0 0 24 24">
+                <polyline points="9 14 4 9 9 4"></polyline>
+                <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+            </svg>
+        </button>
+
+        <div class="flex justify-center items-center gap-4 mb-2">
+            <div class="px-3 py-1 border border-white/20 rounded flex items-center gap-2 shake-rand-1">
+                <span class="text-[10px] text-gray-400">LIVE %</span>
+                <span id="liveProb" class="text-lg font-light text-red-400">0%</span>
+            </div>
+            <div class="px-3 py-1 border border-white/20 rounded flex items-center gap-2 shake-rand-3">
+                <span class="text-[10px] text-gray-400">BLANK %</span>
+                <span id="blankProb" class="text-lg font-light text-blue-400">0%</span>
+            </div>
+        </div>
+
+        <!-- 比例標尺已移至此處 -->
+        <div class="prob-bar-container">
+            <div id="probBarLive" class="prob-bar-live" style="width: 50%"></div>
+        </div>
+
+        <!-- Remaining 樣式放大 -->
+        <div class="text-center mb-6 text-sm opacity-60 tracking-widest font-bold">
+            REMAINING: <span id="remLive">0</span> LIVE / <span id="remBlank">0</span> BLANK
+        </div>
+
+        <div id="slotContainer"></div>
+
+        <!-- 操作區 -->
+        <div class="flex justify-around items-center max-w-xs mx-auto py-8 border-t border-white/10">
+            <button id="btnShootLive" onclick="triggerEffect(true); shoot(true)" class="flex flex-col items-center gap-3 group">
+                <div class="shoot-btn-icon bg-[#992222] group-active:scale-90">
+                    <div class="primer-point">
+                        <svg class="primer-label-svg" viewBox="0 0 100 100">
+                            <defs>
+                                <path id="textCircleLive" d="M 50, 50 m -33, 0 a 33,33 0 1,1 66,0 a 33,33 0 1,1 -66,0" />
+                            </defs>
+                            <text fill="#d4af37" style="font-size: 16.7px; font-weight: 900 !important; letter-spacing: 1px; transform-origin: center; transform: scaleY(1.2);">
+                                <textPath href="#textCircleLive" textAnchor="middle" startOffset="50%">
+                                    BUCKSHOT ROULETTE
+                                </textPath>
+                            </text>
+                        </svg>
+                    </div>
+                </div>
+                <span class="text-[10px] tracking-widest">LIVE</span>
+            </button>
+
+            <button id="btnShootBlank" onclick="triggerEffect(false); shoot(false)" class="flex flex-col items-center gap-3 group">
+                <div class="shoot-btn-icon bg-[#223388] group-active:scale-90">
+                    <div class="primer-point">
+                        <svg class="primer-label-svg" viewBox="0 0 100 100">
+                            <defs>
+                                <path id="textCircleBlank" d="M 50, 50 m -33, 0 a 33,33 0 1,1 66,0 a 33,33 0 1,1 -66,0" />
+                            </defs>
+                            <text fill="#d4af37" style="font-size: 16.7px; font-weight: 900 !important; letter-spacing: 1px; transform-origin: center; transform: scaleY(1.2);">
+                                <textPath href="#textCircleBlank" textAnchor="middle" startOffset="50%">
+                                    BUCKSHOT ROULETTE
+                                </textPath>
+                            </text>
+                        </svg>
+                    </div>
+                </div>
+                <span class="text-[10px] tracking-widest">BLANK</span>
+            </button>
+        </div>
+
+        <div class="mt-8 text-center">
+            <button onclick="resetGame()" class="text-white/20 hover:text-white underline text-[10px]">
+                RESET ROUND
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let config = { live: 0, blank: 0 };
+        let gameState = { 
+            currentLive: 0, 
+            currentBlank: 0, 
+            history: [], 
+            totalShots: 0,
+            notes: {} 
+        };
+        let selectedSlotIndex = null;
+
+        function initSetup() {
+            const liveWrap = document.getElementById('liveBtnContainer');
+            const blankWrap = document.getElementById('blankBtnContainer');
+            liveWrap.innerHTML = '';
+            blankWrap.innerHTML = '';
+            for(let i=1; i<=8; i++) {
+                liveWrap.appendChild(createCountBtn('live', i));
+                blankWrap.appendChild(createCountBtn('blank', i));
+            }
+        }
+
+        function createCountBtn(type, val) {
+            const btn = document.createElement('button');
+            btn.innerText = val;
+            btn.className = `btn-count ${type}-btn-instance`;
+            btn.onclick = () => {
+                document.querySelectorAll(`.${type}-btn-instance`).forEach(el => {
+                    el.classList.remove('btn-active-shake-forever');
+                    el.style.animationDuration = '';
+                    el.classList.remove(`${type}-btn-selected`);
+                });
+                const randomDuration = (0.1 + Math.random() * 0.05).toFixed(2);
+                btn.style.animationDuration = `${randomDuration}s`;
+                btn.classList.add('btn-active-shake-forever');
+                btn.classList.add(`${type}-btn-selected`);
+                config[type] = val;
+            };
+            return btn;
+        }
+
+        function triggerEffect(isLive) {
+            const target = document.getElementById('gameScreen').classList.contains('hidden') 
+                          ? document.getElementById('setupScreen') 
+                          : document.getElementById('gameScreen');
+            const flash = document.getElementById('flashOverlay');
+            target.classList.add('impact-active');
+            setTimeout(() => target.classList.remove('impact-active'), 200);
+            if (isLive) {
+                flash.classList.add('flash-active');
+                setTimeout(() => flash.classList.remove('flash-active'), 400);
+            }
+        }
+
+        function openNoteModal(index) {
+            if (index < gameState.history.length) return;
+            selectedSlotIndex = index;
+            document.getElementById('noteModal').style.display = 'block';
+            document.getElementById('modalOverlay').style.display = 'block';
+        }
+
+        function closeNoteModal() {
+            document.getElementById('noteModal').style.display = 'none';
+            document.getElementById('modalOverlay').style.display = 'none';
+            selectedSlotIndex = null;
+        }
+
+        function applyNote(type) {
+            if (selectedSlotIndex === null) return;
+            
+            if (type) {
+                // 檢查邏輯：標記前先計算剩餘可標記額度
+                let notedLiveCount = 0;
+                let notedBlankCount = 0;
+                for (let idx in gameState.notes) {
+                    // 排除當前正在修改的這個槽位，並只計算未發射的
+                    if (parseInt(idx) >= gameState.history.length && parseInt(idx) !== selectedSlotIndex) {
+                        if (gameState.notes[idx] === 'live') notedLiveCount++;
+                        else notedBlankCount++;
+                    }
+                }
+
+                // 如果要標記實彈，檢查是否還有剩餘實彈額度
+                if (type === 'live' && notedLiveCount >= gameState.currentLive) {
+                    // 沒實彈可標了，直接取消操作或維持現狀
+                    closeNoteModal();
+                    return;
+                }
+                // 如果要標記空彈，檢查是否還有剩餘空彈額度
+                if (type === 'blank' && notedBlankCount >= gameState.currentBlank) {
+                    closeNoteModal();
+                    return;
+                }
+
+                gameState.notes[selectedSlotIndex] = type;
+            } else {
+                delete gameState.notes[selectedSlotIndex];
+            }
+            
+            closeNoteModal();
+            renderSlots();
+            updateStats();
+        }
+
+        function startGame() {
+            if (config.live === 0 && config.blank === 0) return;
+            gameState.currentLive = config.live;
+            gameState.currentBlank = config.blank;
+            gameState.totalShots = config.live + config.blank;
+            gameState.history = [];
+            gameState.notes = {};
+            document.getElementById('setupScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            renderSlots();
+            updateStats();
+        }
+
+        function resetGame() {
+            config = { live: 0, blank: 0 };
+            gameState = { 
+                currentLive: 0, 
+                currentBlank: 0, 
+                history: [], 
+                totalShots: 0,
+                notes: {} 
+            };
+            initSetup();
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('setupScreen').classList.remove('hidden');
+        }
+
+        function renderSlots() {
+            const container = document.getElementById('slotContainer');
+            container.innerHTML = '';
+            
+            let currentDisplayNum = 1;
+
+            for (let i = 0; i < gameState.totalShots; i++) {
+                const div = document.createElement('div');
+                div.className = 'shell-slot';
+                div.id = `slot-${i}`;
+                div.onclick = () => openNoteModal(i);
+                
+                div.style.animationDuration = `${(0.25 + Math.random() * 0.15).toFixed(2)}s`;
+
+                if (i >= gameState.history.length) {
+                    const numSpan = document.createElement('span');
+                    numSpan.className = 'slot-number';
+                    numSpan.innerText = currentDisplayNum++;
+                    div.appendChild(numSpan);
+                }
+
+                if (i === gameState.history.length) {
+                    div.classList.add('active-slot');
+                }
+                
+                if (gameState.history[i]) {
+                    const shell = document.createElement('div');
+                    shell.className = gameState.history[i] === 'live' ? 'shell-live' : 'shell-blank';
+                    div.appendChild(shell);
+                } 
+                else if (gameState.notes[i]) {
+                    const shell = document.createElement('div');
+                    shell.className = (gameState.notes[i] === 'live' ? 'shell-live' : 'shell-blank') + ' shell-noted';
+                    div.appendChild(shell);
+                }
+
+                container.appendChild(div);
+            }
+        }
+
+        function updateStats() {
+            const totalRemaining = gameState.currentLive + gameState.currentBlank;
+            let notedLiveCount = 0;
+            let notedBlankCount = 0;
+            
+            for (let idx in gameState.notes) {
+                if (parseInt(idx) >= gameState.history.length) {
+                    if (gameState.notes[idx] === 'live') notedLiveCount++;
+                    else notedBlankCount++;
+                }
+            }
+
+            const unknownLive = Math.max(0, gameState.currentLive - notedLiveCount);
+            const unknownBlank = Math.max(0, gameState.currentBlank - notedBlankCount);
+            const unknownTotal = unknownLive + unknownBlank;
+
+            let liveProb, blankProb;
+            const activeIdx = gameState.history.length;
+
+            if (totalRemaining === 0) {
+                liveProb = 0;
+                blankProb = 0;
+            } 
+            else if (gameState.notes[activeIdx]) {
+                liveProb = gameState.notes[activeIdx] === 'live' ? 100 : 0;
+                blankProb = 100 - liveProb;
+            } 
+            else {
+                liveProb = unknownTotal === 0 ? 0 : Math.round((unknownLive / unknownTotal) * 100);
+                blankProb = 100 - liveProb;
+            }
+
+            document.getElementById('liveProb').innerText = `${liveProb}%`;
+            document.getElementById('blankProb').innerText = `${blankProb}%`;
+            document.getElementById('remLive').innerText = gameState.currentLive;
+            document.getElementById('remBlank').innerText = gameState.currentBlank;
+            document.getElementById('probBarLive').style.width = `${liveProb}%`;
+            
+            document.getElementById('btnShootLive').disabled = (gameState.currentLive <= 0);
+            document.getElementById('btnShootBlank').disabled = (gameState.currentBlank <= 0);
+            document.getElementById('undoBtn').disabled = (gameState.history.length === 0);
+
+            if (gameState.history.length === gameState.totalShots && gameState.totalShots > 0) {
+                setTimeout(() => { resetGame(); }, 1500);
+            }
+        }
+
+        function shoot(isLive) {
+            const index = gameState.history.length;
+            if (index >= gameState.totalShots) return;
+
+            if (isLive) {
+                if (gameState.currentLive <= 0) return;
+                gameState.currentLive--;
+                gameState.history.push('live');
+            } else {
+                if (gameState.currentBlank <= 0) return;
+                gameState.currentBlank--;
+                gameState.history.push('blank');
+            }
+            
+            renderSlots();
+            updateStats();
+        }
+
+        function undo() {
+            if (gameState.history.length === 0) return;
+            const lastShot = gameState.history.pop();
+            if (lastShot === 'live') {
+                gameState.currentLive++;
+            } else {
+                gameState.currentBlank++;
+            }
+            renderSlots();
+            updateStats();
+        }
+
+        window.onload = initSetup;
+    </script>
+</body>
+</html>
